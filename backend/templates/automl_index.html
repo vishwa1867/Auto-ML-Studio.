@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AutoML - CSV Cleaner & Model Trainer</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css">
+    <style>
+        body { font-family: Arial; min-height:100vh; padding-top:50px; margin:0; 
+               background: linear-gradient(rgba(0,0,0,0.4), rgba(0,0,0,0.4)), url('static/files/1.jpg') no-repeat center center fixed; background-size:cover; color:#fff;}
+        .container { background: rgba(0,0,0,0.85); padding:30px; border-radius:16px; max-width:900px; margin:auto; box-shadow:0 8px 24px rgba(0,0,0,0.6);}
+        h2 { color: #00aaff; text-align: center; margin-bottom: 30px; }
+        .btn-primary { background: linear-gradient(90deg, #ff7e5f, #feb47b); border:none; }
+        .btn-success { background: linear-gradient(90deg, #28a745, #78c850); border:none; }
+        .ml-models .btn { margin:5px; background: linear-gradient(90deg,#006400,#28a745); border:none; }
+        table { width:100%; border-collapse:collapse; margin-top:15px; color:#fff; }
+        th, td { border:1px solid #ddd; padding:8px; }
+        th { background-color: rgba(0,170,255,0.3); }
+        tr:nth-child(even) { background-color: rgba(0,0,0,0.3); }
+        #metrics { margin-top:20px; }
+    </style>
+</head>
+<body>
+<div class="container">
+    <h2>AutoML CSV Cleaner & Model Trainer</h2>
+
+    <!-- Upload Form -->
+    <form id="uploadForm" enctype="multipart/form-data" class="mt-3">
+        <input type="file" id="csvFile" required class="form-control">
+        <button type="submit" class="btn btn-primary mt-2">Upload & Clean</button>
+    </form>
+
+    <div id="message" class="mt-3"></div>
+    <div id="downloadLink" class="mt-2"></div>
+    <div id="previewTable" class="mt-4"></div>
+
+    <h4 class="mt-4">Choose an ML Model:</h4>
+    <div class="ml-models">
+        <button class="btn" onclick="trainModel('Random Forest')">Random Forest</button>
+        <button class="btn" onclick="trainModel('XGBoost')">XGBoost</button>
+        <button class="btn" onclick="trainModel('Decision Tree')">Decision Tree</button>
+        <button class="btn" onclick="trainModel('Logistic Regression')">Logistic Regression</button>
+        <button class="btn" onclick="trainModel('SVM')">SVM</button>
+    </div>
+
+    <div id="metrics"></div>
+</div>
+
+<script>
+let cleanedFilePath = "";
+
+// Upload CSV & Clean
+document.getElementById("uploadForm").addEventListener("submit", async function(e){
+    e.preventDefault();
+    const fileInput = document.getElementById("csvFile");
+    if(!fileInput.files[0]) return alert("Select a CSV file first!");
+    const formData = new FormData();
+    formData.append("file", fileInput.files[0]);
+
+    const messageDiv = document.getElementById("message");
+    const downloadDiv = document.getElementById("downloadLink");
+    const previewDiv = document.getElementById("previewTable");
+    messageDiv.innerHTML = "Processing...";
+    downloadDiv.innerHTML = "";
+    previewDiv.innerHTML = "";
+
+    try{
+        const response = await fetch("/upload-csv", { method:"POST", body:formData });
+        const data = await response.json();
+
+        if(data.error){
+            messageDiv.innerHTML = "❌ "+data.error;
+        } else {
+            cleanedFilePath = data.cleaned_file_link;
+            messageDiv.innerHTML = "✅ "+data.message;
+            downloadDiv.innerHTML = `<a href="${cleanedFilePath}" class="btn btn-success" download>Download Cleaned CSV</a>`;
+            previewDiv.innerHTML = data.preview;
+        }
+    } catch(err){
+        console.error(err);
+        messageDiv.innerHTML = "❌ Error uploading file";
+    }
+});
+
+// Train Model
+async function trainModel(modelName){
+    if(!cleanedFilePath) return alert("Upload and clean a CSV first!");
+    const metricsDiv = document.getElementById("metrics");
+    metricsDiv.innerHTML = "⚡ Training model...";
+
+    try{
+        const response = await fetch("/train-model", {
+            method:"POST",
+            headers: {"Content-Type":"application/json"},
+            body: JSON.stringify({ file_path: cleanedFilePath, model_choice: modelName })
+        });
+        const data = await response.json();
+        if(data.error){
+            metricsDiv.innerHTML = "❌ "+data.error;
+        } else {
+            metricsDiv.innerHTML = `<h5>Model: ${data.Model}</h5>
+                                    <p>Accuracy: ${data["Accuracy"]}</p>
+                                    <p>F1 Score: ${data["F1 Score"]}</p>`;
+        }
+    } catch(err){
+        console.error(err);
+        metricsDiv.innerHTML = "❌ Error training model";
+    }
+}
+</script>
+</body>
+</html>
