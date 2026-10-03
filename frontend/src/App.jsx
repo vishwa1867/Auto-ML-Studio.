@@ -1,7 +1,7 @@
 import { BrowserRouter, Routes, Route, Link } from "react-router-dom";
 import About from "./pages/About";
 import Contact from "./pages/Contact";
-import Visualization from "./pages/Visualization";
+import Visualization from "./pages/visualization";
 import DatasetInsights from "./pages/DatasetInsights";
 import "./App.css";
 
